@@ -3,11 +3,15 @@ package com.ricardodev.crudclientes.services;
 import com.ricardodev.crudclientes.dto.ClientDTO;
 import com.ricardodev.crudclientes.entities.Client;
 import com.ricardodev.crudclientes.repositories.ClientRepository;
-import org.apache.velocity.exception.ResourceNotFoundException;
+import com.ricardodev.crudclientes.services.exceptions.DatabaseException;
+import com.ricardodev.crudclientes.services.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service //devolve DTO
@@ -42,6 +46,35 @@ public class ClientService {
         return new  ClientDTO(client);
         }
 
+        @Transactional
+        public ClientDTO update(Long id, ClientDTO clientDTO){
+
+        try{
+            //Instanciar o Client comm a referencia do id que eu passar no argumento
+            Client client = clientRepository.getReferenceById(id);
+            copyDtoToEntity(clientDTO,client);
+            client = clientRepository.save(client);
+            return new ClientDTO(client);
+            }
+        catch(EntityNotFoundException e){
+            throw new ResourceNotFoundException("Recurso não encontrado");
+        }
+    }
+
+
+    @Transactional(propagation = Propagation.SUPPORTS)
+    public void delete(Long id){
+        if(!clientRepository.existsById(id)){
+            throw new ResourceNotFoundException("Id não existente");
+        }
+        try{
+            clientRepository.deleteById(id);
+        }
+        catch (DataIntegrityViolationException e){
+            throw new DatabaseException("Falha de integridade referencial");
+        }
+
+    }
 
     private void copyDtoToEntity(ClientDTO clientDTO, Client client){
     client.setName(clientDTO.getName());
